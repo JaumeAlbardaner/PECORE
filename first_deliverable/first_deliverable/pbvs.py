@@ -1,7 +1,7 @@
 
 import rclpy
 from rclpy.node import Node
-
+import math
 import numpy as np
 
 from geometry_msgs.msg import Twist
@@ -32,8 +32,6 @@ class PBVS(Node):
         self.timer_control = self.create_timer(0.5, self.send_command)
 
         # TF variables to be used later
-        self.jackal_curr_pose = None
-        self.jackal_goal_pose = None
         self.cam_H_camDesired = None
 
         # Declare and acquire lambda parameter
@@ -43,26 +41,6 @@ class PBVS(Node):
 
 
     def update_pose(self):
-        #Update current position
-        try:
-            self.jackal_curr_pose = self.tf_buffer.lookup_transform(
-                "front_camera",
-                "map",
-                rclpy.time.Time())
-        except TransformException as ex:
-            self.get_logger().info(
-                f'Could not transform "Jackal Goal" to "map": {ex}')
-            return
-        #Update goal position
-        try:
-            self.jackal_goal_pose = self.tf_buffer.lookup_transform(
-                "desired_camera",
-                "map",
-                rclpy.time.Time())
-        except TransformException as ex:
-            self.get_logger().info(
-                f'Could not transform "Current Jackal position" to "map": {ex}')
-            return
         #Update relative transform
         try:
             self.cam_H_camDesired = self.tf_buffer.lookup_transform(
@@ -77,43 +55,26 @@ class PBVS(Node):
 
     def send_command(self):
         # Don't give command if aruco was lost or odometry fails
-        if (self.jackal_curr_pose == None or 
-            self.jackal_goal_pose == None or 
-            self.cam_H_camDesired == None):
+        if (self.cam_H_camDesired == None):
             return
-
-        #Setting current state and goal in numpy arrays
-        pos_curr = np.asarray([self.jackal_curr_pose.transform.translation.x,
-                    self.jackal_curr_pose.transform.translation.y,
-                    self.jackal_curr_pose.transform.translation.z])
-        pos_goal = np.asarray([self.jackal_goal_pose.transform.translation.x,
-                    self.jackal_goal_pose.transform.translation.y,
-                    self.jackal_goal_pose.transform.translation.z])
-        
-        q_curr = [self.jackal_curr_pose.transform.rotation.x,
-                        self.jackal_curr_pose.transform.rotation.y,
-                        self.jackal_curr_pose.transform.rotation.z,
-                        self.jackal_curr_pose.transform.rotation.w]
-        q_goal = [self.jackal_goal_pose.transform.rotation.x,
-                        self.jackal_goal_pose.transform.rotation.y,
-                        self.jackal_goal_pose.transform.rotation.z,
-                        self.jackal_goal_pose.transform.rotation.w]
-
         #Finding error
-        euler_curr = tf.euler_from_quaternion(q_curr)
-        euler_goal = tf.euler_from_quaternion(q_goal)
+        rot_diff = np.array([self.cam_H_camDesired.transform.rotation.x,
+                        self.cam_H_camDesired.transform.rotation.y,
+                        self.cam_H_camDesired.transform.rotation.z,
+                        self.cam_H_camDesired.transform.rotation.w])
+        rot_diff_mat = tf.quaternion_matrix(rot_diff)
+
         
-        err_pos = np.subtract(pos_goal,pos_curr)
-        err_rpy = np.subtract(euler_goal,euler_curr)
+        err_pos = np.array([self.cam_H_camDesired.transform.translation.x,
+                            self.cam_H_camDesired.transform.translation.y,
+                            self.cam_H_camDesired.transform.translation.z])
+        err_rpy = tf.euler_from_matrix(rot_diff_mat)
         
         error = np.concatenate((err_pos,err_rpy))
 
 
         # Compute Jacobian
-        Jp = tf.quaternion_matrix([self.cam_H_camDesired.transform.rotation.x,
-                self.cam_H_camDesired.transform.rotation.y,
-                self.cam_H_camDesired.transform.rotation.z,
-                self.cam_H_camDesired.transform.rotation.w])[0:3,0:3]
+        Jp = rot_diff_mat[0:3,0:3]
         
         Jth = 0.5*(np.trace(np.transpose(Jp))*np.identity(3)-Jp)
         
@@ -124,10 +85,10 @@ class PBVS(Node):
         # Compute control action
         v = -self.lam*np.matmul(np.linalg.pinv(J),error)
 
-        #Send the command
+        #Send the command with an adjustment made due to differential drive properties
         msg = Twist()
         msg.linear.x = v[0]
-        msg.angular.z = v[5]
+        msg.angular.z = v[5] + math.atan2(v[2],v[1]) # Add rotation bc robot not omnidirectional
         self.publisher_.publish(msg)
         self.get_logger().info('Publishing: "vx: %f, wz: %f"' % (msg.linear.x, msg.angular.z))
 

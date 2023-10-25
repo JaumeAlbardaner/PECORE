@@ -23,7 +23,8 @@ This README has been written in order to include the answers to the questions pr
 
 #### Have you built your own position controller or used the ROS navigation stack?
 
- - I have built a position controller based on the Pose-Based Visual Servoing (PBVS) that was viewed in class.
+ - I have built a position controller based on the Pose-Based Visual Servoing (PBVS) that was viewed in class. It includes some correction due to the vehicle not being omnidirectional.
+
 
 #### How do you think Gazebo is actually driving the robot using your commands?
 

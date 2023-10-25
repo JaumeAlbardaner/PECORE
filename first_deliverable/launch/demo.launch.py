@@ -20,11 +20,12 @@ def generate_launch_description():
         ])
     )
 
-    # Include the launch of the deliverable (muted bc it talks too much)
+    # Include the launch of the deliverable
     declared_arguments.append(
     IncludeLaunchDescription(
         PythonLaunchDescriptionSource(get_package_share_directory('pecore_launch') 
-                                + '/launch/practicum1.launch.py')), output = "none"
+                                + '/launch/practicum1.launch.py')
+        )
     )
 
     # Fake global localization (odom in map frame)
@@ -39,7 +40,8 @@ def generate_launch_description():
     declared_arguments.append(
         Node(package = "tf2_ros",
                       executable = "static_transform_publisher",
-                      arguments = ["0.0", "0.0", "0.1","-0.7071068", "0.7071068", "0.0", "0.7071068", "aruco_marker_frame", "desired_camera"],
+                    #   arguments = ["0.0", "0.0", "0.1","-0.7071068", "0.7071068", "0.0", "0.7071068", "aruco_marker_frame", "desired_camera"],
+                      arguments = ["0.0", "0.0", "0.1","0.0", "0.7071068", "0.0", "0.7071068", "aruco_marker_frame", "desired_camera"],
                       output = "screen"
            )
     )
@@ -63,7 +65,7 @@ def generate_launch_description():
         Node(package = "first_deliverable",
                       executable = "pbvs",
                       output = "screen",
-                      parameters=[{"lam":0.05}]
+                      parameters=[{"lam":0.3}]
            )
     )
 
