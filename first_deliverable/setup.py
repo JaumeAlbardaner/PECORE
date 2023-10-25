@@ -6,7 +6,7 @@ package_name = 'first_deliverable'
 
 setup(
     name=package_name,
-    version='0.0.0',
+    version='0.0.1',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -18,8 +18,8 @@ setup(
     zip_safe=True,
     maintainer='jaume',
     maintainer_email='jaal5534@colorado.edu',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Package that moves a Jackal robot towards an Aruco marker',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [

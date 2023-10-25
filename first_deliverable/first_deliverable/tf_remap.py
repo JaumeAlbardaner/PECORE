@@ -21,10 +21,9 @@ class FrameRepublisher(Node):
 
         super().__init__('jackal_aruco_remapper')
 
+        # Initialize the TF objects
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
-
-        # Initialize the transform broadcaster
         self.tf_broadcaster = TransformBroadcaster(self)
 
         # Subscribe to get Aruco pose
@@ -35,13 +34,14 @@ class FrameRepublisher(Node):
             100)
         self.subscription  # prevent unused variable warning
 
+        # Instantiate TF with static header variable
         self.cam_H_aruco = TransformStamped() 
         self.cam_H_aruco.header.frame_id = "front_camera_optical"
         self.cam_H_aruco.child_frame_id = "aruco_marker_frame"
         
-
+    # Returns the concatenation of two TransformStamped messages
     def concatenate_transforms(self, transform1, transform2):
-        # Combine the transformations
+        # Combine the headers
         combined_transform = TransformStamped()
         combined_transform.header.stamp = self.get_clock().now().to_msg()
         combined_transform.header.frame_id = transform1.header.frame_id
@@ -63,7 +63,8 @@ class FrameRepublisher(Node):
         combined_transform.transform.rotation.w = concatQ[3]
 
         return combined_transform
-
+    
+    # Returns the inverse of a TransformStamped message
     def transform_inverse(self, t):
         t2 = TransformStamped()
 
@@ -87,24 +88,23 @@ class FrameRepublisher(Node):
 
         return t2
 
+    # Returns the transformation between target_frame and from_frame,
+    # or returns None otherwise
     def get_from_H_to(self, from_frame_rel, to_frame_rel):
-
-        # Return the transformation between target_frame and from_frame
-        # or return None otherwise
         try:
+            # Check TF tree for requested transform
             return self.tf_buffer.lookup_transform(
                 to_frame_rel,
                 from_frame_rel,
                 rclpy.time.Time())
             
-
         except TransformException as ex:
             self.get_logger().info(
                 f'Could not transform {to_frame_rel} to {from_frame_rel}: {ex}')
             return
 
         
-
+    # Plots the TF of the aruco corresponding to the received PoseStamped
     def aruco_callback(self, msg):
         self.cam_H_aruco.header.stamp = self.get_clock().now().to_msg()
         self.cam_H_aruco.transform.translation.x = msg.pose.position.x
@@ -117,33 +117,12 @@ class FrameRepublisher(Node):
         self.tf_broadcaster.sendTransform(self.cam_H_aruco)
         return
 
-    # def pub_desCam_H_rob(self):
-    #     robot_H_cam = self.get_from_H_to('base_link','front_camera')
-    #     # cam_H_robot = self.transform_inverse(robot_H_cam)
-    #     # map_H_descam = self.get_from_H_to('map','desired_camera')
-    #     robot_H_cam.header.frame_id = 'desired_camera'
-    #     robot_H_cam.child_frame_id = 'desired_robot'
-    #     self.tf_broadcaster.sendTransform(robot_H_cam)
-    #     return
-
-
 
 def main():
 
     rclpy.init()
 
     node = FrameRepublisher()
-    # node.pub_desCam_H_rob()
     rclpy.spin(node)
-
-    # try:
-    #     while rclpy.ok():            
-    #         node.get_map_H_baselink()
-
-    #         rclpy.spin_once(node)
-            
-    # except KeyboardInterrupt:
-    #     pass
-
-
+    
     rclpy.shutdown()
