@@ -13,6 +13,7 @@ from tf2_ros import TransformBroadcaster
 
 from gazebo_msgs.srv import GetEntityState
 
+from nav_msgs.msg import Odometry
 
 
 class FrameListener(Node):
@@ -42,6 +43,9 @@ class FrameListener(Node):
 
         # Initialize the transform broadcaster
         self.tf_broadcaster = TransformBroadcaster(self)
+
+        # Initialize pose publisher
+        self.publisher_ = self.create_publisher(Odometry, '/odometry/ground_truth', 1000)
 
         self.cli = self.create_client(GetEntityState, '/gazebo/get_entity_state')
         while not self.cli.wait_for_service(timeout_sec=1.0):
@@ -150,7 +154,26 @@ class FrameListener(Node):
         map_H_odom = self.concatenate_transforms(self.map_H_baselink, baselink_H_odom)
 
         # Send the transformation
-        self.tf_broadcaster.sendTransform(map_H_odom)
+        # self.tf_broadcaster.sendTransform(map_H_odom)
+
+        # Publish the transform
+        msg = Odometry()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = 'map'
+        msg.child_frame_id = 'odom'
+        # Extracting translation
+        position = map_H_odom.transform.translation
+        msg.pose.pose.position.x = position.x
+        msg.pose.pose.position.y = position.y
+        msg.pose.pose.position.z = position.z
+        # Extracting rotation and converting to quaternion
+        rotation = map_H_odom.transform.rotation
+        msg.pose.pose.orientation.x = rotation.x
+        msg.pose.pose.orientation.y = rotation.y
+        msg.pose.pose.orientation.z = rotation.z
+        msg.pose.pose.orientation.w = rotation.w
+
+        self.publisher_.publish(msg)
 
 
 
