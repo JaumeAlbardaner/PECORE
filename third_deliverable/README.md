@@ -1,4 +1,24 @@
-# m-explore ROS2 port
+# Third deliverable
+
+This part of the repository contains the modified version of the `explore` ROS2 package. It is used by the Jackal mobile robot to explore an unknown environment relying on the use of frontiers. In this fork, the package was modified to rely on a closest frontier heuristic in order to explore an unknown environment
+
+By just using the default package, the following result was achieved:
+
+<p align="center">
+  <img src="./img/part1.gif" />
+</p>
+
+
+With this package, the result is the following:
+
+<p align="center">
+  <img src="./img/part2.gif" />
+</p>
+
+
+**(Original README.md content below)**
+
+## m-explore ROS2 port
 
 ROS2 package port for multi-robot autonomous exploration of [m-explore](https://github.com/hrnr/m-explore). Currently tested on Eloquent, Dashing, Foxy, and Galactic distros.
 
